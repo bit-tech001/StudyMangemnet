@@ -1,10 +1,24 @@
+/// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import managedConfig from '../../firebase-applet-config.json';
+
+// Prioritize environment variables for custom Firebase accounts, 
+// fallback to the managed config if env vars are missing.
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || managedConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || managedConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || managedConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || managedConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || managedConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || managedConfig.appId,
+};
+
+const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || (managedConfig as any).firestoreDatabaseId || '(default)';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = getFirestore(app, databaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
