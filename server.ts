@@ -2,85 +2,23 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cors from "cors";
 import dotenv from "dotenv";
+import { connectDB, User, Assignment, Exam } from "./src/db";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/kzu_portal";
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB connection error:", err));
-
-// Models
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  fullName: { type: String, required: true },
-  role: { type: String, enum: ["student", "teacher"], required: true },
-  department: { type: String, default: "General" },
-  studentId: { type: String },
-  createdAt: { type: Date, default: Date.now },
-});
-
-UserSchema.set('toJSON', {
-  virtuals: true,
-  versionKey: false,
-  transform: function (doc, ret) { delete ret._id }
-});
-
-const User = mongoose.model("User", UserSchema);
-
-const AssignmentSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  subject: { type: String, required: true },
-  dueDate: { type: String, required: true },
-  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  createdAt: { type: Date, default: Date.now },
-});
-
-AssignmentSchema.set('toJSON', {
-  virtuals: true,
-  versionKey: false,
-  transform: function (doc, ret) { delete ret._id }
-});
-
-const Assignment = mongoose.model("Assignment", AssignmentSchema);
-
-const ExamSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  subject: { type: String, required: true },
-  date: { type: String, required: true },
-  duration: { type: Number, required: true },
-  status: { type: String, default: 'scheduled' },
-  questions: [{
-    question: String,
-    options: [String],
-    answer: Number
-  }],
-  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  createdAt: { type: Date, default: Date.now },
-});
-
-ExamSchema.set('toJSON', {
-  virtuals: true,
-  versionKey: false,
-  transform: function (doc, ret) { delete ret._id }
-});
-
-const Exam = mongoose.model("Exam", ExamSchema);
-
 async function startServer() {
+  // Connect to Database
+  await connectDB();
+
   const app = express();
   const PORT = 3000;
 
