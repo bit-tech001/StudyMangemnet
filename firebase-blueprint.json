@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user profiles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["teacher", "student"] },
+        "department": { "type": "string" },
+        "studentId": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "Course assignments",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "courseName": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "maxMarks": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "teacherId"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "Online exams",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "courseName": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswer": { "type": "string" },
+              "type": { "type": "string" }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["scheduled", "active", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "teacherId"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Student submissions for assignments and exams",
+      "type": "object",
+      "properties": {
+        "taskId": { "type": "string" },
+        "type": { "type": "string", "enum": ["assignment", "exam"] },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "content": { "type": "object" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "marksObtained": { "type": "number" },
+        "feedback": { "type": "string" },
+        "isGraded": { "type": "boolean" }
+      },
+      "required": ["taskId", "studentId", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/assignments/{assignmentId}": {
+      "schema": "Assignment",
+      "description": "Teacher created assignments"
+    },
+    "/exams/{examId}": {
+      "schema": "Exam",
+      "description": "Teacher created exams"
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Student submissions"
+    }
+  }
+}
