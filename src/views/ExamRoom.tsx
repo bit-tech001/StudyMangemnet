@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { examApi } from '../lib/api';
 import { useAuth } from '../App';
 import { Exam } from '../types';
 import { Timer, AlertCircle, ChevronLeft, ChevronRight, Send, Loader2 } from 'lucide-react';
@@ -21,14 +20,11 @@ export default function ExamRoom() {
     async function fetchExam() {
       if (!examId) return;
       try {
-        const examDoc = await getDoc(doc(db, 'exams', examId));
-        if (examDoc.exists()) {
-          const data = { id: examDoc.id, ...examDoc.data() } as Exam;
-          setExam(data);
-          setTimeLeft(data.durationMinutes * 60);
-        }
+        const { data } = await examApi.get(examId);
+        setExam(data);
+        setTimeLeft(data.durationMinutes * 60 || 3600);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `exams/${examId}`);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -55,19 +51,11 @@ export default function ExamRoom() {
     if (!exam || !examId || !profile) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'submissions'), {
-        taskId: examId,
-        type: 'exam',
-        studentId: profile.uid,
-        studentName: profile.fullName,
-        content: answers,
-        isGraded: false,
-        submittedAt: serverTimestamp(),
-      });
+      await examApi.submit(examId, { answers });
       alert("Exam submitted successfully!");
       navigate('/dashboard');
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'submissions');
+      console.error(error);
       alert("Failed to submit. Please contact support immediately.");
     } finally {
       setLoading(false);

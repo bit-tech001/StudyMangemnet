@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Assignment, Exam, Submission } from '../types';
+import { assignmentApi, examApi } from '../lib/api';
+import { Assignment, Exam } from '../types';
 import { Plus, FileText, BookOpen, Users, TrendingUp, Clock, Calendar } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -14,48 +13,26 @@ export default function TeacherDashboard() {
   const [upcomingExams, setUpcomingExams] = useState<Exam[]>([]);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       if (!profile) return;
       try {
-        const assignmentsCol = collection(db, 'assignments');
-        const examsCol = collection(db, 'exams');
-        const submissionsCol = collection(db, 'submissions');
-
-        const [assignmentsSnap, examsSnap, submissionsSnap] = await Promise.all([
-          getDocs(query(assignmentsCol, where('teacherId', '==', profile.uid))),
-          getDocs(query(examsCol, where('teacherId', '==', profile.uid))),
-          getDocs(query(submissionsCol, where('isGraded', '==', false)))
+        const [assignmentsRes, examsRes] = await Promise.all([
+          assignmentApi.list(),
+          examApi.list(),
         ]);
-
+        
+        setRecentAssignments(assignmentsRes.data.slice(0, 3));
+        setUpcomingExams(examsRes.data.slice(0, 3));
         setStats({
-          assignments: assignmentsSnap.size,
-          exams: examsSnap.size,
-          pendingGrading: submissionsSnap.size,
+          assignments: assignmentsRes.data.length,
+          exams: examsRes.data.length,
+          pendingGrading: 0, // Placeholder
         });
-
-        // Recent assignments
-        const recentAssignmentsSnap = await getDocs(query(
-          assignmentsCol, 
-          where('teacherId', '==', profile.uid),
-          orderBy('createdAt', 'desc'),
-          limit(3)
-        ));
-        setRecentAssignments(recentAssignmentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }) as Assignment));
-
-        // Upcoming exams
-        const upcomingExamsSnap = await getDocs(query(
-          examsCol,
-          where('teacherId', '==', profile.uid),
-          where('status', '==', 'scheduled'),
-          limit(3)
-        ));
-        setUpcomingExams(upcomingExamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }) as Exam));
-
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, 'multiple');
+        console.error(error);
       }
     }
-    fetchStats();
+    fetchData();
   }, [profile]);
 
   const quickStats = [

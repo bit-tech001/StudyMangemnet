@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { authApi } from '../lib/api';
 import { User, Save, GraduationCap, Building, Mail, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -32,19 +31,12 @@ export default function Profile() {
     setLoading(true);
     setSuccess(false);
     try {
-      const userRef = doc(db, 'users', profile.uid);
-      await updateDoc(userRef, {
-        fullName: formData.fullName,
-        department: formData.department,
-        studentId: formData.studentId,
-      });
-      
-      const updatedProfile = { ...profile, ...formData };
-      setProfile(updatedProfile);
+      const { data } = await authApi.updateProfile(formData);
+      setProfile(data);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${profile.uid}`);
+      console.error(error);
       alert("Failed to update profile.");
     } finally {
       setLoading(false);

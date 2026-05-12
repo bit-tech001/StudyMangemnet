@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { examApi } from '../lib/api';
 import { Exam } from '../types';
 import { BookOpen, Calendar, Clock, Lock, Play, Loader2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,21 +14,10 @@ export default function ExamList() {
   useEffect(() => {
     async function fetchExams() {
       try {
-        const examsCol = collection(db, 'exams');
-        let q = query(examsCol, orderBy('createdAt', 'desc'));
-        
-        if (profile?.role === 'teacher') {
-          q = query(examsCol, where('teacherId', '==', profile.uid), orderBy('createdAt', 'desc'));
-        }
-        
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data() as any
-        })) as Exam[];
+        const { data } = await examApi.list();
         setExams(data);
       } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'exams');
+        console.error(error);
       } finally {
         setLoading(false);
       }

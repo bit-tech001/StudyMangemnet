@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../App';
 import { useNavigate } from 'react-router-dom';
 import { FilePlus, Save, X, Calendar, Book } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { assignmentApi } from '../lib/api';
 
 export default function AssignmentForm() {
   const { profile } = useAuth();
@@ -21,15 +20,14 @@ export default function AssignmentForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await addDoc(collection(db, 'assignments'), {
+      await assignmentApi.create({
         ...formData,
-        teacherId: profile?.uid,
-        createdAt: serverTimestamp(),
+        subject: formData.courseName // Map courseName to subject for server
       });
       navigate('/dashboard');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'assignments');
-      alert("Failed to create assignment. Check permissions.");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.response?.data?.message || "Failed to create assignment.");
     } finally {
       setLoading(false);
     }

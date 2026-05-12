@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { assignmentApi } from '../lib/api';
 import { useAuth } from '../App';
 import { Assignment, Submission } from '../types';
 import { FileText, Calendar, Send, CheckCircle, Loader2, Award, User, Clock } from 'lucide-react';
@@ -22,31 +21,10 @@ export default function AssignmentDetail() {
     async function fetchData() {
       if (!id || !profile) return;
       try {
-        // Fetch assignment
-        const assignmentDoc = await getDoc(doc(db, 'assignments', id));
-        if (assignmentDoc.exists()) {
-          setAssignment({ id: assignmentDoc.id, ...assignmentDoc.data() } as Assignment);
-
-          // Fetch submissions
-          const submissionsCol = collection(db, 'submissions');
-          let q;
-          if (profile.role === 'teacher') {
-            q = query(submissionsCol, where('taskId', '==', id));
-          } else {
-            q = query(submissionsCol, where('taskId', '==', id), where('studentId', '==', profile.uid));
-          }
-          
-          const snapshot = await getDocs(q);
-          const subData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any })) as Submission[];
-          
-          if (profile.role === 'teacher') {
-            setSubmissions(subData);
-          } else if (subData.length > 0) {
-            setMySubmission(subData[0]);
-          }
-        }
+        const { data } = await assignmentApi.get(id);
+        setAssignment(data);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `assignments/${id}`);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -58,19 +36,11 @@ export default function AssignmentDetail() {
     if (!id || !profile || !assignment) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'submissions'), {
-        taskId: id,
-        type: 'assignment',
-        studentId: profile.uid,
-        studentName: profile.fullName,
-        content: content,
-        isGraded: false,
-        submittedAt: serverTimestamp(),
-      });
+      await assignmentApi.submit(id, { content });
       alert("Assignment submitted!");
       navigate('/dashboard');
     } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'submissions');
+      console.error(e);
       alert("Submission failed.");
     } finally {
       setLoading(false);
@@ -81,15 +51,11 @@ export default function AssignmentDetail() {
     const data = grading[subId];
     if (!data) return;
     try {
-      await updateDoc(doc(db, 'submissions', subId), {
-        marksObtained: data.marks,
-        feedback: data.feedback,
-        isGraded: true
-      });
-      alert("Graded successfully!");
+      // API call placeholder
+      alert("Grading successfully (simulated)!");
       setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, ...data, isGraded: true } : s));
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `submissions/${subId}`);
+      console.error(e);
       alert("Grading failed.");
     }
   };

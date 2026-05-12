@@ -4,9 +4,6 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from './lib/firebase';
 import { UserProfile, UserRole } from './types';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -18,14 +15,15 @@ import AssignmentList from './views/AssignmentList';
 import ExamList from './views/ExamList';
 import ExamRoom from './views/ExamRoom';
 import AssignmentDetail from './views/AssignmentDetail';
-
 import Profile from './views/Profile';
+import { authApi } from './lib/api';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   profile: UserProfile | null;
   loading: boolean;
-  signIn: (role: UserRole) => Promise<void>;
+  login: (credentials: any) => Promise<void>;
+  register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
 }
@@ -33,62 +31,50 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        setUser(user);
-        if (user) {
-          // Get profile from Firestore
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-          } else {
-            // Default check if they just logged in without role selection (Landing handles role selection)
-            setProfile(null);
-          }
-        } else {
-          setProfile(null);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const { data } = await authApi.me();
+          setUser(data);
+          setProfile(data);
+        } catch (error) {
+          console.error("Auth initialization error:", error);
+          localStorage.removeItem('token');
         }
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-      } finally {
-        setLoading(false);
       }
-    });
-    return unsubscribe;
+      setLoading(false);
+    };
+    checkAuth();
   }, []);
 
-  const signIn = async (role: UserRole) => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      
-      const profileData: UserProfile = {
-        uid: result.user.uid,
-        fullName: result.user.displayName || 'Unnamed User',
-        email: result.user.email || '',
-        role: role,
-        department: 'General',
-      };
-
-      // Save to Firestore
-      const docRef = doc(db, 'users', result.user.uid);
-      await setDoc(docRef, profileData);
-      setProfile(profileData);
-      
-    } catch (error) {
-      console.error("Auth error:", error);
-    }
+  const login = async (credentials: any) => {
+    const { data } = await authApi.login(credentials);
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    setProfile(data.user);
   };
 
-  const logout = () => signOut(auth);
+  const register = async (userData: any) => {
+    const { data } = await authApi.register(userData);
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    setProfile(data.user);
+  };
+
+  const logout = async () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    setProfile(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logout, setProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, register, logout, setProfile }}>
       {children}
     </AuthContext.Provider>
   );

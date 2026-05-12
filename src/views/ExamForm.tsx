@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, Save, X, Clock } from 'lucide-react';
 import { ExamQuestion } from '../types';
+import { examApi } from '../lib/api';
 
 export default function ExamForm() {
   const { profile } = useAuth();
@@ -39,17 +38,23 @@ export default function ExamForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await addDoc(collection(db, 'exams'), {
-        ...formData,
-        questions,
-        teacherId: profile?.uid,
-        status: 'scheduled',
-        createdAt: serverTimestamp(),
+      const mappedQuestions = questions.map(q => ({
+        question: q.question,
+        options: q.options || [],
+        answer: (q.correctAnswer?.charCodeAt(0) || 65) - 65
+      }));
+
+      await examApi.create({
+        title: formData.title,
+        subject: formData.courseName,
+        date: formData.startTime || new Date().toISOString(),
+        duration: formData.durationMinutes,
+        questions: mappedQuestions
       });
       navigate('/dashboard');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'exams');
-      alert("Failed to schedule exam.");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.response?.data?.message || "Failed to schedule exam.");
     } finally {
       setLoading(false);
     }

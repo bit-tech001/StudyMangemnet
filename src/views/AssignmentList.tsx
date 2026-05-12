@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { assignmentApi } from '../lib/api';
 import { Assignment } from '../types';
 import { FileText, Calendar, ChevronRight, Plus, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,21 +14,10 @@ export default function AssignmentList() {
   useEffect(() => {
     async function fetchAssignments() {
       try {
-        const assignmentsCol = collection(db, 'assignments');
-        let q = query(assignmentsCol, orderBy('createdAt', 'desc'));
-        
-        if (profile?.role === 'teacher') {
-          q = query(assignmentsCol, where('teacherId', '==', profile.uid), orderBy('createdAt', 'desc'));
-        }
-        
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data() as any
-        })) as Assignment[];
+        const { data } = await assignmentApi.list();
         setAssignments(data);
       } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'assignments');
+        console.error(error);
       } finally {
         setLoading(false);
       }
